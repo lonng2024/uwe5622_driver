@@ -21,10 +21,19 @@ jobs:
           # 用你重新提取的正确 Module.symvers 覆盖掉原来的
           sudo cp $GITHUB_WORKSPACE/Module.symvers /lib/modules/6.12.41-trim/build/Module.symvers
 
-          # 添加缺失的 sched_setscheduler 符号（格式严格对齐）
-          printf "0x00000000\tsched_setscheduler\tvmlinux\tEXPORT_SYMBOL_GPL\n" | sudo tee -a /lib/modules/6.12.41-trim/build/Module.symvers > /dev/null
+          # 清洗符号表：删除空行，只保留格式正确的行（地址、符号、模块、导出类型至少4个Tab分隔字段）
+          sudo sed -i '/^$/d' /lib/modules/6.12.41-trim/build/Module.symvers
+          sudo egrep -v '^[[:space:]]*$' /lib/modules/6.12.41-trim/build/Module.symvers | \
+            egrep '^0x[0-9a-fA-F]+\t[^\t]+\t[^\t]+\t[^\t]+' | \
+            sudo tee /lib/modules/6.12.41-trim/build/Module.symvers.clean > /dev/null
+          sudo mv /lib/modules/6.12.41-trim/build/Module.symvers.clean /lib/modules/6.12.41-trim/build/Module.symvers
 
-          # 确保文件以换行符结尾，避免 parse error
+          # 添加缺失的 sched_setscheduler 符号（如果尚未存在）
+          if ! grep -q 'sched_setscheduler' /lib/modules/6.12.41-trim/build/Module.symvers; then
+            printf '0x00000000\tsched_setscheduler\tvmlinux\tEXPORT_SYMBOL_GPL\n' | sudo tee -a /lib/modules/6.12.41-trim/build/Module.symvers > /dev/null
+          fi
+
+          # 确保文件以换行结尾
           sudo sed -i -e '$a\' /lib/modules/6.12.41-trim/build/Module.symvers
 
           # 安装编译工具并替换跨架构工具
