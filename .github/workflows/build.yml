@@ -10,7 +10,7 @@ jobs:
     runs-on: ubuntu-22.04
 
     steps:
-      - name: Checkout driver source and kernel headers (including new Module.symvers)
+      - name: Checkout driver source and kernel headers
         uses: actions/checkout@v4
 
       - name: Prepare environment and fix tools
@@ -21,7 +21,15 @@ jobs:
           # 用你重新提取的正确 Module.symvers 覆盖掉原来的
           sudo cp $GITHUB_WORKSPACE/Module.symvers /lib/modules/6.12.41-trim/build/Module.symvers
 
-          sudo apt update && sudo apt install -y build-essential gcc-12-aarch64-linux-gnu linux-headers-$(uname -r)
+          # 添加缺失的 sched_setscheduler 符号（格式严格对齐）
+          printf "0x00000000\tsched_setscheduler\tvmlinux\tEXPORT_SYMBOL_GPL\n" | sudo tee -a /lib/modules/6.12.41-trim/build/Module.symvers > /dev/null
+
+          # 确保文件以换行符结尾，避免 parse error
+          sudo sed -i -e '$a\' /lib/modules/6.12.41-trim/build/Module.symvers
+
+          # 安装编译工具并替换跨架构工具
+          sudo apt update
+          sudo apt install -y build-essential gcc-12-aarch64-linux-gnu linux-headers-$(uname -r)
 
           HOST_HEADERS=/lib/modules/$(uname -r)/build
           TARGET_HEADERS=/lib/modules/6.12.41-trim/build
