@@ -3,47 +3,41 @@ name: Build UWE5622 driver for FnOS 6.12.41
 on:
   push:
     branches: [ main ]
-  workflow_dispatch:
+  workflow_dispatch:          # 允许手动触发
 
 jobs:
   build:
     runs-on: ubuntu-22.04
 
     steps:
-      - name: Checkout driver source
+      # 第一步：检出驱动源码和头文件包
+      - name: Checkout driver source and kernel headers
         uses: actions/checkout@v4
 
-      - name: Prepare kernel source and cross-compiler
+      # 第二步：解压根正的飞牛头文件到标准位置
+      - name: Extract kernel headers from package
         run: |
-          # 克隆 6.12.41 内核源码
-          sudo git clone --depth 1 --branch v6.12.41 https://git.kernel.org/pub/scm/linux/kernel/git/stable/linux.git /usr/src/linux-6.12.41
-
-          # 复制你的飞牛 .config
-          sudo cp $GITHUB_WORKSPACE/config-6.12.41-trim /usr/src/linux-6.12.41/.config
-
-          # 安装 ARM64 交叉编译工具链
-          sudo apt update
-          sudo apt install -y build-essential flex bison bc gcc-aarch64-linux-gnu
-
-          # 配置并准备模块编译环境 (交叉编译)
-          cd /usr/src/linux-6.12.41
-          sudo make ARCH=arm64 CROSS_COMPILE=aarch64-linux-gnu- olddefconfig
-          sudo make ARCH=arm64 CROSS_COMPILE=aarch64-linux-gnu- modules_prepare
-
-          # 建立标准链接
+          # 创建目标 module 目录
           sudo mkdir -p /lib/modules/6.12.41-trim
-          sudo ln -sf /usr/src/linux-6.12.41 /lib/modules/6.12.41-trim/build
+          # 解压根正头文件包，因为打包时使用了 -h 选项，内容将直接展开
+          sudo tar -xzf kernel-headers-6.12.41-trim.tar.gz -C /lib/modules/6.12.41-trim
+          # 确保头文件可用（简单验证）
+          ls -ld /lib/modules/6.12.41-trim/build/include
 
+      # 第三步：安装基础编译工具
+      - name: Install build tools
+        run: sudo apt update && sudo apt install -y build-essential
+
+      # 第四步：编译驱动模块
       - name: Build driver modules
         run: |
           cd $GITHUB_WORKSPACE
           make -C /lib/modules/6.12.41-trim/build M=$PWD modules \
-               ARCH=arm64 \
-               CROSS_COMPILE=aarch64-linux-gnu- \
                CONFIG_RK_WIFI_DEVICE_UWE5622=m \
                CONFIG_WLAN_UWE5622=m \
                CONFIG_TTY_OVERY_SDIO=m
 
+      # 第五步：上传编译好的 .ko 文件
       - name: Upload artifacts
         uses: actions/upload-artifact@v4
         with:
