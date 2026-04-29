@@ -13,18 +13,27 @@ jobs:
       - name: Checkout driver source
         uses: actions/checkout@v4
 
-      - name: Install Ubuntu mainline kernel headers (6.12.41)
+      - name: Download and prepare kernel source (6.12.41)
         run: |
-          wget https://kernel.ubuntu.com/mainline/v6.12.41/arm64/linux-headers-6.12.41-060641-generic_6.12.41-060641.202502071238_arm64.deb
-          wget https://kernel.ubuntu.com/mainline/v6.12.41/arm64/linux-headers-6.12.41-060641_6.12.41-060641.202502071238_all.deb
-          sudo apt update
-          sudo apt install -y ./linux-headers-6.12.41-060641_*_all.deb ./linux-headers-6.12.41-060641-generic_*_arm64.deb
-          sudo mkdir -p /lib/modules/6.12.41-trim
-          sudo ln -sf /usr/src/linux-headers-6.12.41-060641-generic /lib/modules/6.12.41-trim/build
-          sudo cp $GITHUB_WORKSPACE/config-6.12.41-trim /usr/src/linux-headers-6.12.41-060641-generic/.config
+          # 使用能下得动的 6.12.41 完整内核源码
+          wget https://mirrors.ustc.edu.cn/kernel.org/linux/kernel/v6.x/linux-6.12.41.tar.xz
+          tar -xJf linux-6.12.41.tar.xz
+          mv linux-6.12.41 /usr/src/
 
-      - name: Install build tools
-        run: sudo apt install -y build-essential
+          # 将你的 .config 放进源码树
+          cp $GITHUB_WORKSPACE/config-6.12.41-trim /usr/src/linux-6.12.41/.config
+          cd /usr/src/linux-6.12.41
+
+          # 安装所需工具
+          sudo apt update && sudo apt install -y build-essential flex bison bc
+
+          # 两次 make 生成驱动编译所需的全部文件
+          sudo make ARCH=arm64 olddefconfig
+          sudo make ARCH=arm64 modules_prepare
+
+          # 创建链接（指向刚准备好的源码树）
+          sudo mkdir -p /lib/modules/6.12.41-trim
+          sudo ln -sf /usr/src/linux-6.12.41 /lib/modules/6.12.41-trim/build
 
       - name: Build driver modules
         run: |
