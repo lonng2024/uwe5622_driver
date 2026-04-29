@@ -15,15 +15,26 @@ jobs:
 
       - name: Prepare environment and fix tools
         run: |
-          sudo mkdir -p /lib/modules/6.12.41-trim
-          sudo tar -xzf kernel-headers-6.12.41-trim.tar.gz -C /lib/modules/6.12.41-trim
+          # 解压根正飞牛头文件，直接解压到根目录，保留绝对路径结构
+          sudo tar -xzf kernel-headers-6.12.41-trim.tar.gz -C /
+          # 复制你的配置文件
           sudo cp $GITHUB_WORKSPACE/config-6.12.41-trim /lib/modules/6.12.41-trim/build/.config
+          # 安装所需工具
           sudo apt update && sudo apt install -y build-essential gcc-12-aarch64-linux-gnu linux-headers-$(uname -r)
+          # 替换 x86 工具
           HOST_HEADERS=/lib/modules/$(uname -r)/build
           TARGET_HEADERS=/lib/modules/6.12.41-trim/build
           sudo cp ${HOST_HEADERS}/scripts/basic/fixdep ${TARGET_HEADERS}/scripts/basic/fixdep
           sudo cp ${HOST_HEADERS}/scripts/mod/modpost ${TARGET_HEADERS}/scripts/mod/modpost
           sudo chmod +x ${TARGET_HEADERS}/scripts/basic/fixdep ${TARGET_HEADERS}/scripts/mod/modpost
+
+          # 确保 Module.symvers 存在；如果缺失则创建临时符号表
+          if [ ! -f ${TARGET_HEADERS}/Module.symvers ]; then
+            echo "Module.symvers not found, creating minimal symbol table"
+            echo "0x00000001 sched_setscheduler vmlinux EXPORT_SYMBOL_GPL" | sudo tee ${TARGET_HEADERS}/Module.symvers
+          else
+            echo "Module.symvers found, size: $(stat -c%s ${TARGET_HEADERS}/Module.symvers)"
+          fi
 
       - name: Remove deprecated set_channel assignment
         run: |
