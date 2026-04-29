@@ -17,19 +17,18 @@ jobs:
         run: |
           sudo mkdir -p /lib/modules/6.12.41-trim
           sudo tar -xzf kernel-headers-6.12.41-trim.tar.gz -C /lib/modules/6.12.41-trim
-          
-          # 将你提取的飞牛配置文件复制进去，确保架构和模块选项正确
           sudo cp $GITHUB_WORKSPACE/config-6.12.41-trim /lib/modules/6.12.41-trim/build/.config
-          
-          # 安装 ARM64 交叉编译工具链
-          sudo apt update && sudo apt install -y build-essential gcc-aarch64-linux-gnu
+
+          # 安装 GCC 12 交叉编译器（匹配飞牛内核编译环境）
+          sudo apt update
+          sudo apt install -y build-essential gcc-12-aarch64-linux-gnu
 
       - name: Build driver modules
         run: |
           cd $GITHUB_WORKSPACE
           make -C /lib/modules/6.12.41-trim/build M=$PWD modules \
                ARCH=arm64 \
-               CROSS_COMPILE=aarch64-linux-gnu- \
+               CROSS_COMPILE=aarch64-linux-gnu-12 \
                CONFIG_RK_WIFI_DEVICE_UWE5622=m \
                CONFIG_WLAN_UWE5622=m \
                CONFIG_TTY_OVERY_SDIO=m
