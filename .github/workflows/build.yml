@@ -1,4 +1,4 @@
-name: Build UWE5622 driver for FnOS 6.12.41
+name: Build UWE5622 driver for FnOS 6.12.41 (Git)
 
 on:
   push:
@@ -8,30 +8,27 @@ on:
 jobs:
   build:
     runs-on: ubuntu-22.04
-
     steps:
       - name: Checkout driver source
         uses: actions/checkout@v4
 
-      - name: Download and prepare kernel source (6.12.41)
+      - name: Prepare kernel source via Git (6.12.41)
         run: |
-          # 使用能下得动的 6.12.41 完整内核源码
-          wget https://mirrors.ustc.edu.cn/kernel.org/linux/kernel/v6.x/linux-6.12.41.tar.xz
-          tar -xJf linux-6.12.41.tar.xz
-          mv linux-6.12.41 /usr/src/
+          # 1. 克隆 Linux 稳定版内核仓库到 /usr/src
+          sudo git clone --depth 1 --branch v6.12.41 https://git.kernel.org/pub/scm/linux/kernel/git/stable/linux.git /usr/src/linux-6.12.41
 
-          # 将你的 .config 放进源码树
-          cp $GITHUB_WORKSPACE/config-6.12.41-trim /usr/src/linux-6.12.41/.config
-          cd /usr/src/linux-6.12.41
+          # 2. 将你从飞牛提取的 .config 文件复制进去
+          sudo cp $GITHUB_WORKSPACE/config-6.12.41-trim /usr/src/linux-6.12.41/.config
 
-          # 安装所需工具
+          # 3. 安装编译必备工具
           sudo apt update && sudo apt install -y build-essential flex bison bc
 
-          # 两次 make 生成驱动编译所需的全部文件
+          # 4. 进入源码目录，配置并准备编译环境
+          cd /usr/src/linux-6.12.41
           sudo make ARCH=arm64 olddefconfig
           sudo make ARCH=arm64 modules_prepare
 
-          # 创建链接（指向刚准备好的源码树）
+          # 5. 建立标准软链接
           sudo mkdir -p /lib/modules/6.12.41-trim
           sudo ln -sf /usr/src/linux-6.12.41 /lib/modules/6.12.41-trim/build
 
