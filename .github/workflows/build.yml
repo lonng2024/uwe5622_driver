@@ -3,34 +3,34 @@ name: Build UWE5622 driver for FnOS 6.12.41
 on:
   push:
     branches: [ main ]
-  workflow_dispatch:
+  workflow_dispatch:          # 允许手动触发
 
 jobs:
   build:
     runs-on: ubuntu-22.04
 
     steps:
+      # 1. 检出你的驱动源码（已做 6.12 适配的 cfg80211.c 需要在这个仓库里）
       - name: Checkout driver source
         uses: actions/checkout@v4
 
-      - name: Download kernel source
+      # 2. 安装飞牛 6.12.41-trim 对应的内核头文件 deb 包
+      - name: Install kernel headers for 6.12.41-trim
         run: |
-          wget https://github.com/ophub/fnnas/releases/download/kernel_fnnas/6.12.41-rockchip.tar.gz
-          sudo tar -xzf 6.12.41-rockchip.tar.gz -C /usr/src/
-          KERNEL_DIR=$(ls /usr/src/ | grep -E 'linux-*|kernel-*' | head -1)
-          echo "KERNEL_DIR=$KERNEL_DIR" >> $GITHUB_ENV
-          # 创建构建链接，指向解压出的内核源码
+          # ⚠️ 请将下面的下载链接替换为 Releases 页面中真正的头文件包地址！
+          wget https://github.com/ophub/fnnas/releases/download/kernel_fnnas/linux-headers-6.12.41-trim_6.12.41-trim-10_arm64.deb
+          sudo apt update
+          sudo apt install -y ./linux-headers-6.12.41-trim_*.deb
+
+          # 确保系统能通过标准路径找到头文件
           sudo mkdir -p /lib/modules/6.12.41-trim
-          sudo ln -sf /usr/src/$KERNEL_DIR /lib/modules/6.12.41-trim/build
+          sudo ln -sf /usr/src/linux-headers-6.12.41-trim /lib/modules/6.12.41-trim/build
 
+      # 3. 安装基础编译工具
       - name: Install build tools
-        run: sudo apt update && sudo apt install -y build-essential bc flex bison
+        run: sudo apt install -y build-essential
 
-      - name: Prepare kernel headers
-        run: |
-          cd /usr/src/${{ env.KERNEL_DIR }}
-          make modules_prepare
-
+      # 4. 编译驱动模块
       - name: Build driver modules
         run: |
           cd $GITHUB_WORKSPACE
@@ -39,6 +39,7 @@ jobs:
                CONFIG_WLAN_UWE5622=m \
                CONFIG_TTY_OVERY_SDIO=m
 
+      # 5. 上传编译好的 .ko 文件
       - name: Upload artifacts
         uses: actions/upload-artifact@v4
         with:
