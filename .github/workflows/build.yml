@@ -3,44 +3,40 @@ name: Build UWE5622 driver for FnOS 6.12.41
 on:
   push:
     branches: [ main ]
-  workflow_dispatch:          # 允许在 Actions 页面手动触发
+  workflow_dispatch:
 
 jobs:
   build:
     runs-on: ubuntu-22.04
 
     steps:
-      # 第一步：检出你的驱动源码（其中包含修改后的 cfg80211.c 和 kernel config）
       - name: Checkout driver source
         uses: actions/checkout@v4
 
-      # 第二步：下载并准备内核源码（6.12.41-rockchip）
-      - name: Download and prepare kernel source
+      - name: Download and prepare kernel source (6.12.41 full source)
         run: |
-          # 下载 ophub 提供的完整内核源码包（约 110MB）
-          wget https://github.com/ophub/fnnas/releases/download/kernel_fnnas/6.12.41-rockchip.tar.gz
-          sudo tar -xzf 6.12.41-rockchip.tar.gz -C /usr/src/
+          # 使用 fnnas_debs 下的真正源码包（支持 modules_prepare）
+          wget https://github.com/ophub/fnnas/releases/download/fnnas_debs/6.12.41.tar.gz
+          sudo tar -xzf 6.12.41.tar.gz -C /usr/src/
           
-          # 自动找到解压出来的内核目录（通常形如 linux-6.12.41-rockchip）
-          KERNEL_DIR=$(ls /usr/src/ | grep -E '6\.12\.41|rockchip' | head -1)
+          # 自动找到解压出来的内核源码目录
+          KERNEL_DIR=$(ls /usr/src/ | grep -E 'linux-*|kernel-*' | grep -v 'azure' | head -1)
           echo "KERNEL_DIR=$KERNEL_DIR" >> $GITHUB_ENV
           
           # 将你从飞牛提取的配置文件复制为 .config
           sudo cp $GITHUB_WORKSPACE/config-6.12.41-trim /usr/src/$KERNEL_DIR/.config
           
-          # 根据配置文件生成编译模块所需的头文件和脚本
+          # 生成模块编译所需文件
           cd /usr/src/$KERNEL_DIR
           sudo make modules_prepare
           
-          # 创建标准链接，确保 make 能找到头文件
+          # 建立标准编译链接
           sudo mkdir -p /lib/modules/6.12.41-trim
           sudo ln -sf /usr/src/$KERNEL_DIR /lib/modules/6.12.41-trim/build
 
-      # 第三步：安装编译工具
       - name: Install build tools
         run: sudo apt update && sudo apt install -y build-essential bc flex bison
 
-      # 第四步：编译驱动模块
       - name: Build driver modules
         run: |
           cd $GITHUB_WORKSPACE
@@ -49,7 +45,6 @@ jobs:
                CONFIG_WLAN_UWE5622=m \
                CONFIG_TTY_OVERY_SDIO=m
 
-      # 第五步：上传编译好的内核模块（.ko 文件）
       - name: Upload artifacts
         uses: actions/upload-artifact@v4
         with:
