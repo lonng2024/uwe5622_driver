@@ -18,8 +18,17 @@ jobs:
           sudo mkdir -p /lib/modules/6.12.41-trim
           sudo tar -xzf kernel-headers-6.12.41-trim.tar.gz -C /lib/modules/6.12.41-trim
 
-          # 替换跨架构工具（fixdep、modpost）
-          sudo apt update && sudo apt install -y build-essential gcc-12-aarch64-linux-gnu linux-headers-$(uname -r)
+          # 删除可能有问题的原始符号表，重建一个最简洁、格式正确的符号表
+          sudo rm -f /lib/modules/6.12.41-trim/build/Module.symvers
+          printf '0x00000000\tsched_setscheduler\tvmlinux\tEXPORT_SYMBOL_GPL\n' | \
+            sudo tee /lib/modules/6.12.41-trim/build/Module.symvers > /dev/null
+          # 确保文件末尾有换行
+          sudo sed -i -e '$a\' /lib/modules/6.12.41-trim/build/Module.symvers
+
+          # 安装编译工具并替换跨架构二进制
+          sudo apt update
+          sudo apt install -y build-essential gcc-12-aarch64-linux-gnu linux-headers-$(uname -r)
+
           HOST_HEADERS=/lib/modules/$(uname -r)/build
           TARGET_HEADERS=/lib/modules/6.12.41-trim/build
           sudo cp ${HOST_HEADERS}/scripts/basic/fixdep ${TARGET_HEADERS}/scripts/basic/fixdep
@@ -30,7 +39,7 @@ jobs:
         run: |
           sed -i '/\.set_channel = sprdwl_cfg80211_set_channel,/d' unisocwifi/cfg80211.c
 
-      - name: Build driver modules (allow modpost failure)
+      - name: Build driver modules
         run: |
           cd $GITHUB_WORKSPACE
           make -C /lib/modules/6.12.41-trim/build M=$PWD modules \
@@ -43,11 +52,7 @@ jobs:
                EXTRA_CFLAGS="-I$GITHUB_WORKSPACE/unisocwcn/include -I$GITHUB_WORKSPACE/unisocwcn/platform -include uwe562x_glb.h -include uwe5622_glb.h" \
                CONFIG_RK_WIFI_DEVICE_UWE5622=m \
                CONFIG_WLAN_UWE5622=m \
-               CONFIG_TTY_OVERY_SDIO=m || true
-
-          # 确认 .ko 文件已生成
-          echo "=== Generated .ko files ==="
-          ls -l unisocwifi/*.ko unisocwcn/*.ko tty-sdio/*.ko
+               CONFIG_TTY_OVERY_SDIO=m
 
       - name: Upload artifacts
         uses: actions/upload-artifact@v4
