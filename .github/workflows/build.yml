@@ -15,15 +15,10 @@ jobs:
 
       - name: Prepare environment and fix tools
         run: |
-          # 解压根正飞牛头文件
           sudo mkdir -p /lib/modules/6.12.41-trim
           sudo tar -xzf kernel-headers-6.12.41-trim.tar.gz -C /lib/modules/6.12.41-trim
           sudo cp $GITHUB_WORKSPACE/config-6.12.41-trim /lib/modules/6.12.41-trim/build/.config
-
-          # 安装 ARM64 交叉编译器和宿主编译工具
           sudo apt update && sudo apt install -y build-essential gcc-12-aarch64-linux-gnu linux-headers-$(uname -r)
-
-          # 用 x86_64 宿主工具替换飞牛头文件中的 ARM64 二进制（fixdep, modpost）
           HOST_HEADERS=/lib/modules/$(uname -r)/build
           TARGET_HEADERS=/lib/modules/6.12.41-trim/build
           sudo cp ${HOST_HEADERS}/scripts/basic/fixdep ${TARGET_HEADERS}/scripts/basic/fixdep
@@ -33,12 +28,12 @@ jobs:
       - name: Build driver modules
         run: |
           cd $GITHUB_WORKSPACE
-          # 强制包含 uwe5622_glb.h，提供所有 MARLIN_AA_CHIPID 等芯片专用宏
+          # 关键：包含 platform 目录，解决 mem_pd_mgr.h 缺失
           make -C /lib/modules/6.12.41-trim/build M=$PWD modules \
                ARCH=arm64 \
                CROSS_COMPILE=aarch64-linux-gnu- \
                CC=aarch64-linux-gnu-gcc-12 \
-               EXTRA_CFLAGS="-I$GITHUB_WORKSPACE/unisocwcn/include -include uwe562x_glb.h -include uwe5622_glb.h" \
+               EXTRA_CFLAGS="-I$GITHUB_WORKSPACE/unisocwcn/include -I$GITHUB_WORKSPACE/unisocwcn/platform -include uwe562x_glb.h -include uwe5622_glb.h" \
                CONFIG_RK_WIFI_DEVICE_UWE5622=m \
                CONFIG_WLAN_UWE5622=m \
                CONFIG_TTY_OVERY_SDIO=m
