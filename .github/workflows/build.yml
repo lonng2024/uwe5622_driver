@@ -33,12 +33,12 @@ jobs:
       - name: Build driver modules
         run: |
           cd $GITHUB_WORKSPACE
-          # 关键：强制包含驱动内部的全局头文件，确保 CHIPID_REG、PACKET_SIZE 等宏有定义
+          # 强制包含 uwe5622_glb.h，提供所有 MARLIN_AA_CHIPID 等芯片专用宏
           make -C /lib/modules/6.12.41-trim/build M=$PWD modules \
                ARCH=arm64 \
                CROSS_COMPILE=aarch64-linux-gnu- \
                CC=aarch64-linux-gnu-gcc-12 \
-               EXTRA_CFLAGS="-I$GITHUB_WORKSPACE/unisocwcn/include -include uwe562x_glb.h" \
+               EXTRA_CFLAGS="-I$GITHUB_WORKSPACE/unisocwcn/include -include uwe562x_glb.h -include uwe5622_glb.h" \
                CONFIG_RK_WIFI_DEVICE_UWE5622=m \
                CONFIG_WLAN_UWE5622=m \
                CONFIG_TTY_OVERY_SDIO=m
