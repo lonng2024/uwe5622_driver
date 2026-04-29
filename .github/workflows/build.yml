@@ -13,18 +13,15 @@ jobs:
       - name: Checkout driver source
         uses: actions/checkout@v4
 
-      - name: Install kernel headers for FnOS 6.12.41-trim
+      - name: Install Ubuntu mainline kernel headers (6.12.41)
         run: |
-          # 下载与飞牛内核版本匹配的头文件包（ARM64 架构）
-          # 🔁 如果你的飞牛是 x86_64 的，请将下面链接中的 arm64 改为 amd64
-          wget https://github.com/ophub/fnnas/releases/download/kernel_fnnas/linux-headers-6.12.41-trim_6.12.41-trim-10_arm64.deb
-          
-          # 安装头文件包
-          sudo apt update && sudo apt install -y ./linux-headers-6.12.41-trim_*.deb
-          
-          # 头文件安装后，/lib/modules/6.12.41-trim/build 会自动指向 /usr/src/linux-headers-6.12.41-trim
-          # 确认一下链接存在
-          ls -l /lib/modules/6.12.41-trim/build
+          wget https://kernel.ubuntu.com/mainline/v6.12.41/arm64/linux-headers-6.12.41-060641-generic_6.12.41-060641.202502071238_arm64.deb
+          wget https://kernel.ubuntu.com/mainline/v6.12.41/arm64/linux-headers-6.12.41-060641_6.12.41-060641.202502071238_all.deb
+          sudo apt update
+          sudo apt install -y ./linux-headers-6.12.41-060641_*_all.deb ./linux-headers-6.12.41-060641-generic_*_arm64.deb
+          sudo mkdir -p /lib/modules/6.12.41-trim
+          sudo ln -sf /usr/src/linux-headers-6.12.41-060641-generic /lib/modules/6.12.41-trim/build
+          sudo cp $GITHUB_WORKSPACE/config-6.12.41-trim /usr/src/linux-headers-6.12.41-060641-generic/.config
 
       - name: Install build tools
         run: sudo apt install -y build-essential
