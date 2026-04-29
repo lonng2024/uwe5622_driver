@@ -10,13 +10,17 @@ jobs:
     runs-on: ubuntu-22.04
 
     steps:
-      - name: Checkout driver source and kernel headers
+      - name: Checkout driver source and kernel headers (including new Module.symvers)
         uses: actions/checkout@v4
 
       - name: Prepare environment and fix tools
         run: |
           sudo mkdir -p /lib/modules/6.12.41-trim
           sudo tar -xzf kernel-headers-6.12.41-trim.tar.gz -C /lib/modules/6.12.41-trim
+
+          # 用你重新提取的正确 Module.symvers 覆盖掉原来的
+          sudo cp $GITHUB_WORKSPACE/Module.symvers /lib/modules/6.12.41-trim/build/Module.symvers
+
           sudo apt update && sudo apt install -y build-essential gcc-12-aarch64-linux-gnu linux-headers-$(uname -r)
 
           HOST_HEADERS=/lib/modules/$(uname -r)/build
@@ -24,13 +28,6 @@ jobs:
           sudo cp ${HOST_HEADERS}/scripts/basic/fixdep ${TARGET_HEADERS}/scripts/basic/fixdep
           sudo cp ${HOST_HEADERS}/scripts/mod/modpost ${TARGET_HEADERS}/scripts/mod/modpost
           sudo chmod +x ${TARGET_HEADERS}/scripts/basic/fixdep ${TARGET_HEADERS}/scripts/mod/modpost
-
-          # 删除损坏的原始符号表，创建全新的、格式正确的符号表
-          sudo rm -f ${TARGET_HEADERS}/Module.symvers
-          sudo printf "0x00000000\tsched_setscheduler\tvmlinux\tEXPORT_SYMBOL_GPL\n" > /tmp/symvers
-          sudo printf "0x00000000\tschedule\tvmlinux\tEXPORT_SYMBOL\n" >> /tmp/symvers
-          sudo mv /tmp/symvers ${TARGET_HEADERS}/Module.symvers
-          echo "Created fresh Module.symvers with required symbols"
 
       - name: Remove deprecated set_channel assignment
         run: |
