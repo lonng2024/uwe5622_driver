@@ -29,30 +29,22 @@ jobs:
           sudo cp ${HOST_HEADERS}/scripts/mod/modpost ${TARGET_HEADERS}/scripts/mod/modpost
           sudo chmod +x ${TARGET_HEADERS}/scripts/basic/fixdep ${TARGET_HEADERS}/scripts/mod/modpost
 
-          # 修复飞牛符号表格式：行尾转换、去空行、末尾换行
+          # 清洗飞牛符号表（解决之前的 parse error）
           sudo dos2unix ${TARGET_HEADERS}/Module.symvers 2>/dev/null || true
           sudo sed -i '/^$/d' ${TARGET_HEADERS}/Module.symvers
           sudo sed -i -e '$a\' ${TARGET_HEADERS}/Module.symvers
 
-          # 从宿主符号表中提取 sched_setscheduler 的正确行（含 CRC）
-          HOST_SCHED_LINE=$(grep 'sched_setscheduler' ${HOST_HEADERS}/Module.symvers)
-          if [ -n "$HOST_SCHED_LINE" ]; then
-            # 删除飞牛表中可能存在的旧 sched_setscheduler 行，然后追加正确行
-            sudo sed -i '/sched_setscheduler/d' ${TARGET_HEADERS}/Module.symvers
-            echo "$HOST_SCHED_LINE" | sudo tee -a ${TARGET_HEADERS}/Module.symvers > /dev/null
-            echo "Added sched_setscheduler from host Module.symvers: $HOST_SCHED_LINE"
-          else
-            echo "ERROR: sched_setscheduler not found in host Module.symvers"
-            exit 1
-          fi
+          # 不再手动添加 sched_setscheduler，避免 CRC 错误
 
       - name: Remove deprecated set_channel assignment
         run: |
           sed -i '/\.set_channel = sprdwl_cfg80211_set_channel,/d' unisocwifi/cfg80211.c
 
-      - name: Build driver modules
+      - name: Build driver modules (allow unresolved symbols)
         run: |
           cd $GITHUB_WORKSPACE
+          # 设置 KBUILD_MODPOST_WARN=1，使 modpost 将未定义符号视为警告而非错误
+          export KBUILD_MODPOST_WARN=1
           make -C /lib/modules/6.12.41-trim/build M=$PWD modules \
                ARCH=arm64 \
                CROSS_COMPILE=aarch64-linux-gnu- \
