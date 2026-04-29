@@ -18,7 +18,7 @@ jobs:
           sudo mkdir -p /lib/modules/6.12.41-trim
           sudo tar -xzf kernel-headers-6.12.41-trim.tar.gz -C /lib/modules/6.12.41-trim
 
-          # 安装工具（dos2unix 用于修复行尾）
+          # 安装 dos2unix 用于修复行尾
           sudo apt update && sudo apt install -y build-essential gcc-12-aarch64-linux-gnu linux-headers-$(uname -r) dos2unix
 
           HOST_HEADERS=/lib/modules/$(uname -r)/build
@@ -29,10 +29,10 @@ jobs:
           sudo cp ${HOST_HEADERS}/scripts/mod/modpost ${TARGET_HEADERS}/scripts/mod/modpost
           sudo chmod +x ${TARGET_HEADERS}/scripts/basic/fixdep ${TARGET_HEADERS}/scripts/mod/modpost
 
-          # 修复飞牛符号表格式：转换行尾（CRLF → LF），删除空行，只保留正确格式的行
+          # 修复行尾（CRLF → LF），然后删除空行
           sudo dos2unix ${TARGET_HEADERS}/Module.symvers 2>/dev/null || true
           sudo sed -i '/^$/d' ${TARGET_HEADERS}/Module.symvers
-          # 确保文件末尾有换行
+          # 确保末尾有换行
           sudo sed -i -e '$a\' ${TARGET_HEADERS}/Module.symvers
 
           # 追加缺失的 sched_setscheduler 符号
