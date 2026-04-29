@@ -1,4 +1,4 @@
-name: Build UWE5622 driver for FnOS 6.12.41 (Git)
+name: Build UWE5622 driver for FnOS 6.12.41
 
 on:
   push:
@@ -8,27 +8,29 @@ on:
 jobs:
   build:
     runs-on: ubuntu-22.04
+
     steps:
       - name: Checkout driver source
         uses: actions/checkout@v4
 
-      - name: Prepare kernel source via Git (6.12.41)
+      - name: Prepare kernel source and cross-compiler
         run: |
-          # 1. 克隆 Linux 稳定版内核仓库到 /usr/src
+          # 克隆 6.12.41 内核源码
           sudo git clone --depth 1 --branch v6.12.41 https://git.kernel.org/pub/scm/linux/kernel/git/stable/linux.git /usr/src/linux-6.12.41
 
-          # 2. 将你从飞牛提取的 .config 文件复制进去
+          # 复制你的飞牛 .config
           sudo cp $GITHUB_WORKSPACE/config-6.12.41-trim /usr/src/linux-6.12.41/.config
 
-          # 3. 安装编译必备工具
-          sudo apt update && sudo apt install -y build-essential flex bison bc
+          # 安装 ARM64 交叉编译工具链
+          sudo apt update
+          sudo apt install -y build-essential flex bison bc gcc-aarch64-linux-gnu
 
-          # 4. 进入源码目录，配置并准备编译环境
+          # 配置并准备模块编译环境 (交叉编译)
           cd /usr/src/linux-6.12.41
-          sudo make ARCH=arm64 olddefconfig
-          sudo make ARCH=arm64 modules_prepare
+          sudo make ARCH=arm64 CROSS_COMPILE=aarch64-linux-gnu- olddefconfig
+          sudo make ARCH=arm64 CROSS_COMPILE=aarch64-linux-gnu- modules_prepare
 
-          # 5. 建立标准软链接
+          # 建立标准链接
           sudo mkdir -p /lib/modules/6.12.41-trim
           sudo ln -sf /usr/src/linux-6.12.41 /lib/modules/6.12.41-trim/build
 
@@ -36,6 +38,8 @@ jobs:
         run: |
           cd $GITHUB_WORKSPACE
           make -C /lib/modules/6.12.41-trim/build M=$PWD modules \
+               ARCH=arm64 \
+               CROSS_COMPILE=aarch64-linux-gnu- \
                CONFIG_RK_WIFI_DEVICE_UWE5622=m \
                CONFIG_WLAN_UWE5622=m \
                CONFIG_TTY_OVERY_SDIO=m
