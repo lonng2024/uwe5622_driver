@@ -27,7 +27,6 @@ jobs:
 
       - name: Remove deprecated set_channel assignment
         run: |
-          # 删除 cfg80211.c 中已废弃的 .set_channel 行
           sed -i '/\.set_channel = sprdwl_cfg80211_set_channel,/d' unisocwifi/cfg80211.c
 
       - name: Build driver modules
@@ -37,6 +36,9 @@ jobs:
                ARCH=arm64 \
                CROSS_COMPILE=aarch64-linux-gnu- \
                CC=aarch64-linux-gnu-gcc-12 \
+               BSP_CHIP_ID=uwe5622 \
+               WCN_HW_TYPE=sdio \
+               CONFIG_WCN_SDIO=y \
                EXTRA_CFLAGS="-I$GITHUB_WORKSPACE/unisocwcn/include -I$GITHUB_WORKSPACE/unisocwcn/platform -include uwe562x_glb.h -include uwe5622_glb.h" \
                CONFIG_RK_WIFI_DEVICE_UWE5622=m \
                CONFIG_WLAN_UWE5622=m \
