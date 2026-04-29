@@ -13,25 +13,26 @@ jobs:
       - name: Checkout driver source and kernel headers
         uses: actions/checkout@v4
 
-      - name: Extract kernel headers and prepare for ARM64
+      - name: Prepare environment
         run: |
+          # 解压根正飞牛头文件
           sudo mkdir -p /lib/modules/6.12.41-trim
           sudo tar -xzf kernel-headers-6.12.41-trim.tar.gz -C /lib/modules/6.12.41-trim
           sudo cp $GITHUB_WORKSPACE/config-6.12.41-trim /lib/modules/6.12.41-trim/build/.config
 
-          # 安装 GCC‑12 交叉编译器（提供 aarch64-linux-gnu-gcc-12）
-          sudo apt update
-          sudo apt install -y build-essential gcc-12-aarch64-linux-gnu
+          # 安装 ARM64 交叉编译器 (GCC 12)
+          sudo apt update && sudo apt install -y build-essential gcc-12-aarch64-linux-gnu
+          # 安装宿主机 x86_64 内核头文件，用于提取可执行工具
+          sudo apt install -y linux-headers-$(uname -r)
 
-          # 验证 GCC‑12 是否安装成功
-          which aarch64-linux-gnu-gcc-12
-          aarch64-linux-gnu-gcc-12 --version
-
-          # 确保默认的 aarch64-linux-gnu-gcc 指向 GCC‑12
-          sudo update-alternatives --install \
-            /usr/bin/aarch64-linux-gnu-gcc aarch64-linux-gnu-gcc \
-            /usr/bin/aarch64-linux-gnu-gcc-12 100
-          sudo update-alternatives --set aarch64-linux-gnu-gcc /usr/bin/aarch64-linux-gnu-gcc-12
+          # 用宿主机的 x86_64 工具替换飞牛头文件中的 ARM64 工具
+          HOST_HEADERS=/lib/modules/$(uname -r)/build
+          TARGET_HEADERS=/lib/modules/6.12.41-trim/build
+          # 关键工具 fixdep 和 modpost
+          sudo cp ${HOST_HEADERS}/scripts/basic/fixdep ${TARGET_HEADERS}/scripts/basic/fixdep
+          sudo cp ${HOST_HEADERS}/scripts/mod/modpost ${TARGET_HEADERS}/scripts/mod/modpost
+          # 确保可执行权限
+          sudo chmod +x ${TARGET_HEADERS}/scripts/basic/fixdep ${TARGET_HEADERS}/scripts/mod/modpost
 
       - name: Build driver modules
         run: |
