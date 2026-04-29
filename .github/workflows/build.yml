@@ -1,0 +1,49 @@
+name: Build UWE5622 driver for FnOS 6.12.41
+
+on:
+  push:
+    branches: [ main ]
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: ubuntu-22.04
+
+    steps:
+      - name: Checkout driver source
+        uses: actions/checkout@v4
+
+      - name: Download kernel source
+        run: |
+          wget https://github.com/ophub/fnnas/releases/download/kernel_fnnas/6.12.41-rockchip.tar.gz
+          sudo tar -xzf 6.12.41-rockchip.tar.gz -C /usr/src/
+          KERNEL_DIR=$(ls /usr/src/ | grep -E 'linux-*|kernel-*' | head -1)
+          echo "KERNEL_DIR=$KERNEL_DIR" >> $GITHUB_ENV
+          # 创建构建链接，指向解压出的内核源码
+          sudo mkdir -p /lib/modules/6.12.41-trim
+          sudo ln -sf /usr/src/$KERNEL_DIR /lib/modules/6.12.41-trim/build
+
+      - name: Install build tools
+        run: sudo apt update && sudo apt install -y build-essential bc flex bison
+
+      - name: Prepare kernel headers
+        run: |
+          cd /usr/src/${{ env.KERNEL_DIR }}
+          make modules_prepare
+
+      - name: Build driver modules
+        run: |
+          cd $GITHUB_WORKSPACE
+          make -C /lib/modules/6.12.41-trim/build M=$PWD modules \
+               CONFIG_RK_WIFI_DEVICE_UWE5622=m \
+               CONFIG_WLAN_UWE5622=m \
+               CONFIG_TTY_OVERY_SDIO=m
+
+      - name: Upload artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: uwe5622-driver-fnos-6.12.41
+          path: |
+            unisocwifi/*.ko
+            unisocwcn/*.ko
+            tty-sdio/*.ko
