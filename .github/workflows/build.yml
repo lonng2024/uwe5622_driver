@@ -18,22 +18,25 @@ jobs:
           sudo mkdir -p /lib/modules/6.12.41-trim
           sudo tar -xzf kernel-headers-6.12.41-trim.tar.gz -C /lib/modules/6.12.41-trim
 
-          # 删除可能有问题的原始符号表，重建一个最简洁、格式正确的符号表
-          sudo rm -f /lib/modules/6.12.41-trim/build/Module.symvers
-          printf '0x00000000\tsched_setscheduler\tvmlinux\tEXPORT_SYMBOL_GPL\n' | \
-            sudo tee /lib/modules/6.12.41-trim/build/Module.symvers > /dev/null
-          # 确保文件末尾有换行
-          sudo sed -i -e '$a\' /lib/modules/6.12.41-trim/build/Module.symvers
-
-          # 安装编译工具并替换跨架构二进制
+          # 安装必要工具（含宿主内核头文件，其中有正确的 Module.symvers）
           sudo apt update
           sudo apt install -y build-essential gcc-12-aarch64-linux-gnu linux-headers-$(uname -r)
 
           HOST_HEADERS=/lib/modules/$(uname -r)/build
           TARGET_HEADERS=/lib/modules/6.12.41-trim/build
+
+          # 替换跨架构工具
           sudo cp ${HOST_HEADERS}/scripts/basic/fixdep ${TARGET_HEADERS}/scripts/basic/fixdep
           sudo cp ${HOST_HEADERS}/scripts/mod/modpost ${TARGET_HEADERS}/scripts/mod/modpost
           sudo chmod +x ${TARGET_HEADERS}/scripts/basic/fixdep ${TARGET_HEADERS}/scripts/mod/modpost
+
+          # 核心：用宿主符号表替代飞牛符号表
+          sudo cp ${HOST_HEADERS}/Module.symvers ${TARGET_HEADERS}/Module.symvers
+
+          # 追加缺失的 sched_setscheduler 符号
+          if ! grep -q 'sched_setscheduler' ${TARGET_HEADERS}/Module.symvers; then
+            printf '0x00000000\tsched_setscheduler\tvmlinux\tEXPORT_SYMBOL_GPL\t0x00000000\n' | sudo tee -a ${TARGET_HEADERS}/Module.symvers > /dev/null
+          fi
 
       - name: Remove deprecated set_channel assignment
         run: |
