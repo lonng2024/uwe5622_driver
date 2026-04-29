@@ -3,34 +3,34 @@ name: Build UWE5622 driver for FnOS 6.12.41
 on:
   push:
     branches: [ main ]
-  workflow_dispatch:          # 允许手动触发
+  workflow_dispatch:
 
 jobs:
   build:
     runs-on: ubuntu-22.04
 
     steps:
-      # 1. 检出你的驱动源码（已做 6.12 适配的 cfg80211.c 需要在这个仓库里）
       - name: Checkout driver source
         uses: actions/checkout@v4
 
-      # 2. 安装飞牛 6.12.41-trim 对应的内核头文件 deb 包
-      - name: Install kernel headers for 6.12.41-trim
+      - name: Download and prepare kernel source (6.12.41-rockchip)
         run: |
-          # ⚠️ 请将下面的下载链接替换为 Releases 页面中真正的头文件包地址！
-          wget https://github.com/ophub/fnnas/releases/download/kernel_fnnas/linux-headers-6.12.41-trim_6.12.41-trim-10_arm64.deb
-          sudo apt update
-          sudo apt install -y ./linux-headers-6.12.41-trim_*.deb
-
-          # 确保系统能通过标准路径找到头文件
+          # 下载完整内核源码包 (约110 MB)
+          wget https://github.com/ophub/fnnas/releases/download/kernel_fnnas/6.12.41-rockchip.tar.gz
+          sudo tar -xzf 6.12.41-rockchip.tar.gz -C /usr/src/
+          KERNEL_DIR=$(ls /usr/src/ | grep -E 'linux-*|kernel-*' | head -1)
+          echo "KERNEL_DIR=$KERNEL_DIR" >> $GITHUB_ENV
+          # 生成模块编译所需的部分头文件
+          cd /usr/src/$KERNEL_DIR
+          # 如果源码包包含 .config 则直接可用，否则需要复制你的 config 文件
+          make modules_prepare
+          # 建立标准编译链接
           sudo mkdir -p /lib/modules/6.12.41-trim
-          sudo ln -sf /usr/src/linux-headers-6.12.41-trim /lib/modules/6.12.41-trim/build
+          sudo ln -sf /usr/src/$KERNEL_DIR /lib/modules/6.12.41-trim/build
 
-      # 3. 安装基础编译工具
       - name: Install build tools
-        run: sudo apt install -y build-essential
+        run: sudo apt install -y build-essential bc flex bison
 
-      # 4. 编译驱动模块
       - name: Build driver modules
         run: |
           cd $GITHUB_WORKSPACE
@@ -39,7 +39,6 @@ jobs:
                CONFIG_WLAN_UWE5622=m \
                CONFIG_TTY_OVERY_SDIO=m
 
-      # 5. 上传编译好的 .ko 文件
       - name: Upload artifacts
         uses: actions/upload-artifact@v4
         with:
