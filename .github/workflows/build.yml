@@ -13,21 +13,22 @@ jobs:
       - name: Checkout driver source
         uses: actions/checkout@v4
 
-      - name: Download and prepare kernel source (6.12.41 full source)
+      - name: Download and prepare kernel source
         run: |
-          # 使用 fnnas_debs 下的真正源码包（支持 modules_prepare）
+          # 下载完整内核源码包
           wget https://github.com/ophub/fnnas/releases/download/fnnas_debs/6.12.41.tar.gz
           sudo tar -xzf 6.12.41.tar.gz -C /usr/src/
           
-          # 自动找到解压出来的内核源码目录
-          KERNEL_DIR=$(ls /usr/src/ | grep -E 'linux-*|kernel-*' | grep -v 'azure' | head -1)
+          # 找到解压出的内核目录（匹配 6.12.41）
+          KERNEL_DIR=$(ls /usr/src/ | grep '6\.12\.41' | head -1)
           echo "KERNEL_DIR=$KERNEL_DIR" >> $GITHUB_ENV
           
-          # 将你从飞牛提取的配置文件复制为 .config
-          sudo cp $GITHUB_WORKSPACE/config-6.12.41-trim /usr/src/$KERNEL_DIR/.config
-          
-          # 生成模块编译所需文件
+          # 进入源码目录，复制配置文件并生成完整的构建系统
           cd /usr/src/$KERNEL_DIR
+          sudo cp $GITHUB_WORKSPACE/config-6.12.41-trim .config
+          
+          # 🌟 关键步骤：根据 .config 生成所有必需的构建文件
+          sudo make olddefconfig
           sudo make modules_prepare
           
           # 建立标准编译链接
