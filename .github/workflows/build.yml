@@ -25,13 +25,12 @@ jobs:
           sudo cp ${HOST_HEADERS}/scripts/mod/modpost ${TARGET_HEADERS}/scripts/mod/modpost
           sudo chmod +x ${TARGET_HEADERS}/scripts/basic/fixdep ${TARGET_HEADERS}/scripts/mod/modpost
 
-          # 正确添加 sched_setscheduler 符号（使用 Tab 分隔）
-          if ! grep -q "sched_setscheduler" ${TARGET_HEADERS}/Module.symvers; then
-            printf "0x00000000\tsched_setscheduler\tvmlinux\tEXPORT_SYMBOL_GPL\n" | sudo tee -a ${TARGET_HEADERS}/Module.symvers > /dev/null
-            echo "Added sched_setscheduler to Module.symvers"
-          else
-            echo "sched_setscheduler already present"
-          fi
+          # 删除损坏的原始符号表，创建全新的、格式正确的符号表
+          sudo rm -f ${TARGET_HEADERS}/Module.symvers
+          sudo printf "0x00000000\tsched_setscheduler\tvmlinux\tEXPORT_SYMBOL_GPL\n" > /tmp/symvers
+          sudo printf "0x00000000\tschedule\tvmlinux\tEXPORT_SYMBOL\n" >> /tmp/symvers
+          sudo mv /tmp/symvers ${TARGET_HEADERS}/Module.symvers
+          echo "Created fresh Module.symvers with required symbols"
 
       - name: Remove deprecated set_channel assignment
         run: |
