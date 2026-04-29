@@ -3270,7 +3270,6 @@ static struct cfg80211_ops sprdwl_cfg80211_ops = {
 	.add_key = sprdwl_cfg80211_add_key,
 	.del_key = sprdwl_cfg80211_del_key,
 	.set_default_key = sprdwl_cfg80211_set_default_key,
-	.set_rekey_data = sprdwl_cfg80211_set_rekey,
 	.start_ap = sprdwl_cfg80211_start_ap,
 	.change_beacon = sprdwl_cfg80211_change_beacon,
 	.stop_ap = sprdwl_cfg80211_stop_ap,
@@ -3278,7 +3277,7 @@ static struct cfg80211_ops sprdwl_cfg80211_ops = {
 	.del_station = sprdwl_cfg80211_del_station,
 	.change_station = sprdwl_cfg80211_change_station,
 	.get_station = sprdwl_cfg80211_get_station,
-	.libertas_set_mesh_channel = sprdwl_cfg80211_set_channel,
+	.set_channel = sprdwl_cfg80211_set_channel,
 	.scan = sprdwl_cfg80211_scan,
 	.connect = sprdwl_cfg80211_connect,
 	.disconnect = sprdwl_cfg80211_disconnect,
@@ -3326,7 +3325,6 @@ static struct cfg80211_ops sprdwl_cfg80211_ops = {
 	.channel_switch = sprdwl_cfg80211_channel_switch,
 #endif
 #ifdef WOW_SUPPORT
-	.set_wakeup = sprdwl_set_wakeup,
 #endif
 };
 
