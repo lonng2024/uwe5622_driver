@@ -25,10 +25,14 @@ jobs:
           sudo cp ${HOST_HEADERS}/scripts/mod/modpost ${TARGET_HEADERS}/scripts/mod/modpost
           sudo chmod +x ${TARGET_HEADERS}/scripts/basic/fixdep ${TARGET_HEADERS}/scripts/mod/modpost
 
+      - name: Remove deprecated set_channel assignment
+        run: |
+          # 删除 cfg80211.c 中已废弃的 .set_channel 行
+          sed -i '/\.set_channel = sprdwl_cfg80211_set_channel,/d' unisocwifi/cfg80211.c
+
       - name: Build driver modules
         run: |
           cd $GITHUB_WORKSPACE
-          # 关键：包含 platform 目录，解决 mem_pd_mgr.h 缺失
           make -C /lib/modules/6.12.41-trim/build M=$PWD modules \
                ARCH=arm64 \
                CROSS_COMPILE=aarch64-linux-gnu- \
