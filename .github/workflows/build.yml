@@ -3,41 +3,37 @@ name: Build UWE5622 driver for FnOS 6.12.41
 on:
   push:
     branches: [ main ]
-  workflow_dispatch:          # 允许手动触发
+  workflow_dispatch:
 
 jobs:
   build:
     runs-on: ubuntu-22.04
 
     steps:
-      # 第一步：检出驱动源码和头文件包
       - name: Checkout driver source and kernel headers
         uses: actions/checkout@v4
 
-      # 第二步：解压根正的飞牛头文件到标准位置
-      - name: Extract kernel headers from package
+      - name: Extract kernel headers and prepare for ARM64
         run: |
-          # 创建目标 module 目录
           sudo mkdir -p /lib/modules/6.12.41-trim
-          # 解压根正头文件包，因为打包时使用了 -h 选项，内容将直接展开
           sudo tar -xzf kernel-headers-6.12.41-trim.tar.gz -C /lib/modules/6.12.41-trim
-          # 确保头文件可用（简单验证）
-          ls -ld /lib/modules/6.12.41-trim/build/include
+          
+          # 将你提取的飞牛配置文件复制进去，确保架构和模块选项正确
+          sudo cp $GITHUB_WORKSPACE/config-6.12.41-trim /lib/modules/6.12.41-trim/build/.config
+          
+          # 安装 ARM64 交叉编译工具链
+          sudo apt update && sudo apt install -y build-essential gcc-aarch64-linux-gnu
 
-      # 第三步：安装基础编译工具
-      - name: Install build tools
-        run: sudo apt update && sudo apt install -y build-essential
-
-      # 第四步：编译驱动模块
       - name: Build driver modules
         run: |
           cd $GITHUB_WORKSPACE
           make -C /lib/modules/6.12.41-trim/build M=$PWD modules \
+               ARCH=arm64 \
+               CROSS_COMPILE=aarch64-linux-gnu- \
                CONFIG_RK_WIFI_DEVICE_UWE5622=m \
                CONFIG_WLAN_UWE5622=m \
                CONFIG_TTY_OVERY_SDIO=m
 
-      # 第五步：上传编译好的 .ko 文件
       - name: Upload artifacts
         uses: actions/upload-artifact@v4
         with:
