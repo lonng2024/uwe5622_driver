@@ -13,30 +13,21 @@ jobs:
       - name: Checkout driver source
         uses: actions/checkout@v4
 
-      - name: Download and prepare kernel source
+      - name: Install kernel headers for FnOS 6.12.41-trim
         run: |
-          # 下载完整内核源码包
-          wget https://github.com/ophub/fnnas/releases/download/fnnas_debs/6.12.41.tar.gz
-          sudo tar -xzf 6.12.41.tar.gz -C /usr/src/
+          # 下载与飞牛内核版本匹配的头文件包（ARM64 架构）
+          # 🔁 如果你的飞牛是 x86_64 的，请将下面链接中的 arm64 改为 amd64
+          wget https://github.com/ophub/fnnas/releases/download/kernel_fnnas/linux-headers-6.12.41-trim_6.12.41-trim-10_arm64.deb
           
-          # 找到解压出的内核目录（匹配 6.12.41）
-          KERNEL_DIR=$(ls /usr/src/ | grep '6\.12\.41' | head -1)
-          echo "KERNEL_DIR=$KERNEL_DIR" >> $GITHUB_ENV
+          # 安装头文件包
+          sudo apt update && sudo apt install -y ./linux-headers-6.12.41-trim_*.deb
           
-          # 进入源码目录，复制配置文件并生成完整的构建系统
-          cd /usr/src/$KERNEL_DIR
-          sudo cp $GITHUB_WORKSPACE/config-6.12.41-trim .config
-          
-          # 🌟 关键步骤：根据 .config 生成所有必需的构建文件
-          sudo make olddefconfig
-          sudo make modules_prepare
-          
-          # 建立标准编译链接
-          sudo mkdir -p /lib/modules/6.12.41-trim
-          sudo ln -sf /usr/src/$KERNEL_DIR /lib/modules/6.12.41-trim/build
+          # 头文件安装后，/lib/modules/6.12.41-trim/build 会自动指向 /usr/src/linux-headers-6.12.41-trim
+          # 确认一下链接存在
+          ls -l /lib/modules/6.12.41-trim/build
 
       - name: Install build tools
-        run: sudo apt update && sudo apt install -y build-essential bc flex bison
+        run: sudo apt install -y build-essential
 
       - name: Build driver modules
         run: |
