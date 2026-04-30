@@ -51,6 +51,7 @@ extern void sdio_set_max_reqsz(unsigned int size);
 
 #ifdef CONFIG_RK_BOARD
 extern int rockchip_wifi_set_carddetect(int val);
+#endif
 
 
 #ifdef CONFIG_AW_BOARD
