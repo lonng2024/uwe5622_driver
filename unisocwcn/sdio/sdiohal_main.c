@@ -2263,6 +2263,9 @@ int sdiohal_init(void)
 	if (sdiohal_parse_dt() < 0)
 		return -1;
 
+	/* 强制使用正确的GPIO */
+	p_data->gpio_num = 107;
+
 	ret = sdiohal_misc_init();
 	if (ret != 0) {
 		sdiohal_err("sdiohal_misc_init error :%d\n", ret);
@@ -2311,4 +2314,3 @@ void sdiohal_exit(void)
 
 	sdiohal_info("sdiohal_exit ok\n");
 }
-
