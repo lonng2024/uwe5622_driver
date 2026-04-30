@@ -51,7 +51,7 @@ extern void sdio_set_max_reqsz(unsigned int size);
 
 #ifdef CONFIG_RK_BOARD
 extern int rockchip_wifi_set_carddetect(int val);
-#endif
+
 
 #ifdef CONFIG_AW_BOARD
 extern int sunxi_wlan_get_bus_index(void);
@@ -1380,6 +1380,8 @@ static int sdiohal_parse_dt(void)
 		     (((p_data->irq_type == SDIOHAL_RX_INBAND_IRQ) ?
 		     "data" : "polling"))), p_data->gpio_num,
 		     sprdwcn_bus_get_blk_size());
+	   p_data->gpio_num = 107;
+	   p_data->reset_gpio = 106;
 
 #ifdef CONFIG_WCN_PARSE_DTS
 	sdio_node = of_parse_phandle(np, "sdhci-name", 0);
