@@ -18,33 +18,27 @@ jobs:
           sudo mkdir -p /lib/modules/6.12.41-trim
           sudo tar -xzf kernel-headers-6.12.41-trim.tar.gz -C /lib/modules/6.12.41-trim
 
-          # 安装必要工具
           sudo apt update && sudo apt install -y build-essential gcc-12-aarch64-linux-gnu linux-headers-$(uname -r) dos2unix
 
           HOST_HEADERS=/lib/modules/$(uname -r)/build
           TARGET_HEADERS=/lib/modules/6.12.41-trim/build
 
-          # 替换跨架构工具
           sudo cp ${HOST_HEADERS}/scripts/basic/fixdep ${TARGET_HEADERS}/scripts/basic/fixdep
           sudo cp ${HOST_HEADERS}/scripts/mod/modpost ${TARGET_HEADERS}/scripts/mod/modpost
           sudo chmod +x ${TARGET_HEADERS}/scripts/basic/fixdep ${TARGET_HEADERS}/scripts/mod/modpost
 
-          # 清洗飞牛符号表（解决之前的 parse error）
           sudo dos2unix ${TARGET_HEADERS}/Module.symvers 2>/dev/null || true
           sudo sed -i '/^$/d' ${TARGET_HEADERS}/Module.symvers
           sudo sed -i -e '$a\' ${TARGET_HEADERS}/Module.symvers
-
-          # 不再手动添加 sched_setscheduler，避免 CRC 错误
 
       - name: Remove deprecated set_channel assignment
         run: |
           sed -i '/\.set_channel = sprdwl_cfg80211_set_channel,/d' unisocwifi/cfg80211.c
 
-      - name: Build driver modules (allow unresolved symbols)
+      - name: Build driver modules
         run: |
           cd $GITHUB_WORKSPACE
-          # 设置 KBUILD_MODPOST_WARN=1，使 modpost 将未定义符号视为警告而非错误
-          export KBUILD_MODPOST_WARN=1
+          make clean
           make -C /lib/modules/6.12.41-trim/build M=$PWD modules \
                ARCH=arm64 \
                CROSS_COMPILE=aarch64-linux-gnu- \
