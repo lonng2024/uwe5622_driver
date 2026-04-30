@@ -2263,11 +2263,29 @@ int sdiohal_init(void)
 	if (sdiohal_parse_dt() < 0)
 		return -1;
 
+	/* 强制设置正确的 GPIO 中断号，放在这里 p_data 已经完全可用 */
+	p_data->gpio_num = 107;
+
 	ret = sdiohal_misc_init();
 	if (ret != 0) {
 		sdiohal_err("sdiohal_misc_init error :%d\n", ret);
 		return -1;
 	}
+
+	sdiohal_launch_thread();
+	if (p_data->irq_type == SDIOHAL_RX_EXTERNAL_IRQ)
+		sdiohal_host_irq_init(p_data->gpio_num);
+	p_data->flag_init = true;
+
+#ifdef CONFIG_DEBUG_FS
+#ifndef USB_SDIO_DT
+	sdiohal_debug_init();
+#endif
+#endif
+	sdiohal_info("sdiohal_init ok\n");
+
+	return 0;
+}
 
 	sdiohal_launch_thread();
 	if (p_data->irq_type == SDIOHAL_RX_EXTERNAL_IRQ)
