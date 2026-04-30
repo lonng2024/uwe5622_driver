@@ -27,6 +27,7 @@ jobs:
           sudo cp ${HOST_HEADERS}/scripts/mod/modpost ${TARGET_HEADERS}/scripts/mod/modpost
           sudo chmod +x ${TARGET_HEADERS}/scripts/basic/fixdep ${TARGET_HEADERS}/scripts/mod/modpost
 
+          # 清洗飞牛符号表格式，避免 modpost 解析错误
           sudo dos2unix ${TARGET_HEADERS}/Module.symvers 2>/dev/null || true
           sudo sed -i '/^$/d' ${TARGET_HEADERS}/Module.symvers
           sudo sed -i -e '$a\' ${TARGET_HEADERS}/Module.symvers
@@ -38,7 +39,9 @@ jobs:
       - name: Build driver modules
         run: |
           cd $GITHUB_WORKSPACE
-          make clean
+          # 强制清理旧编译产物
+          make -C /lib/modules/6.12.41-trim/build M=$PWD clean
+          # 全新编译
           make -C /lib/modules/6.12.41-trim/build M=$PWD modules \
                ARCH=arm64 \
                CROSS_COMPILE=aarch64-linux-gnu- \
